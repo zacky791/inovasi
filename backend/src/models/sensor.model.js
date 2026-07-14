@@ -11,15 +11,14 @@ async function ensureDevice(deviceId, { latitude, longitude } = {}) {
     !Number.isNaN(Number(latitude)) &&
     !Number.isNaN(Number(longitude));
 
-  const [existing] = await pool.execute(
-    'SELECT device_id FROM devices WHERE device_id = ?',
-    [deviceId]
-  );
+  const existing = await pool.query('SELECT device_id FROM devices WHERE device_id = $1', [
+    deviceId,
+  ]);
 
-  if (existing.length === 0) {
-    await pool.execute(
+  if (existing.rows.length === 0) {
+    await pool.query(
       `INSERT INTO devices (device_id, device_name, latitude, longitude, status, last_seen)
-       VALUES (?, ?, ?, ?, 'online', NOW())`,
+       VALUES ($1, $2, $3, $4, 'online', NOW())`,
       [
         deviceId,
         deviceId,
@@ -31,17 +30,17 @@ async function ensureDevice(deviceId, { latitude, longitude } = {}) {
   }
 
   if (hasCoords) {
-    await pool.execute(
+    await pool.query(
       `UPDATE devices
-       SET status = 'online', last_seen = NOW(), latitude = ?, longitude = ?
-       WHERE device_id = ?`,
+       SET status = 'online', last_seen = NOW(), latitude = $1, longitude = $2
+       WHERE device_id = $3`,
       [Number(latitude), Number(longitude), deviceId]
     );
     return;
   }
 
-  await pool.execute(
-    `UPDATE devices SET status = 'online', last_seen = NOW() WHERE device_id = ?`,
+  await pool.query(
+    `UPDATE devices SET status = 'online', last_seen = NOW() WHERE device_id = $1`,
     [deviceId]
   );
 }
@@ -57,51 +56,53 @@ async function createLog({ deviceId, distance, status, buzzerActive, latitude, l
     !Number.isNaN(Number(latitude)) &&
     !Number.isNaN(Number(longitude));
 
-  const [result] = await pool.execute(
+  const result = await pool.query(
     `INSERT INTO sensor_logs (device_id, distance, status, buzzer_active, latitude, longitude)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
     [
       deviceId,
       distance,
       status,
-      buzzerActive ? 1 : 0,
+      Boolean(buzzerActive),
       hasCoords ? Number(latitude) : null,
       hasCoords ? Number(longitude) : null,
     ]
   );
 
-  return findLogById(result.insertId);
+  return findLogById(result.rows[0].id);
 }
 
 async function findLogById(id) {
-  const [rows] = await pool.execute('SELECT * FROM sensor_logs WHERE id = ?', [id]);
-  return rows[0] || null;
+  const result = await pool.query('SELECT * FROM sensor_logs WHERE id = $1', [id]);
+  return result.rows[0] || null;
 }
 
 async function findLogs({ deviceId, limit = 50 }) {
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
 
   if (deviceId) {
-    const [rows] = await pool.execute(
+    const result = await pool.query(
       `SELECT * FROM sensor_logs
-       WHERE device_id = ?
+       WHERE device_id = $1
        ORDER BY created_at DESC
-       LIMIT ${safeLimit}`,
-      [deviceId]
+       LIMIT $2`,
+      [deviceId, safeLimit]
     );
-    return rows;
+    return result.rows;
   }
 
-  const [rows] = await pool.execute(
+  const result = await pool.query(
     `SELECT * FROM sensor_logs
      ORDER BY created_at DESC
-     LIMIT ${safeLimit}`
+     LIMIT $1`,
+    [safeLimit]
   );
-  return rows;
+  return result.rows;
 }
 
 async function findLatestByDevice() {
-  const [rows] = await pool.execute(
+  const result = await pool.query(
     `SELECT
        sl.id,
        sl.device_id,
@@ -122,14 +123,14 @@ async function findLatestByDevice() {
      LEFT JOIN devices d ON d.device_id = sl.device_id
      ORDER BY sl.created_at DESC`
   );
-  return rows;
+  return result.rows;
 }
 
 async function findAllDevices() {
-  const [rows] = await pool.execute(
-    'SELECT * FROM devices ORDER BY last_seen DESC, device_id ASC'
+  const result = await pool.query(
+    'SELECT * FROM devices ORDER BY last_seen DESC NULLS LAST, device_id ASC'
   );
-  return rows;
+  return result.rows;
 }
 
 module.exports = {

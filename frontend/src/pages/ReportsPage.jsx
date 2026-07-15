@@ -130,7 +130,7 @@ export default function ReportsPage() {
         <div className="sensor-title-row">
           <h2>Dashboard</h2>
           <p className="page-description sensor-page-description">
-            Live ESP32 readings from PostgreSQL — auto-refreshes every 5 seconds.
+            Auto refreshes every 5 seconds.
           </p>
         </div>
         <div className="dashboard-meta">
@@ -169,7 +169,6 @@ export default function ReportsPage() {
           <span className="legend-dot" style={{ background: '#ef4444' }} />
           HOLE_DETECTED
         </span>
-        <span className="legend-item text-muted">Click a pin to view live sensor reading</span>
       </div>
 
       <div className="sensor-dashboard-layout">

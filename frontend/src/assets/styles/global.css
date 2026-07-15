@@ -39,10 +39,12 @@ body {
   background: var(--color-surface);
   box-shadow: var(--shadow);
   padding: 0 1.5rem;
+  min-height: 60px;
   height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 }
 
 .logo {
@@ -50,9 +52,17 @@ body {
   font-weight: 700;
   color: var(--color-primary);
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.nav-links {
   display: flex;
   align-items: center;
   gap: 1.25rem;
@@ -64,6 +74,7 @@ body {
   font-weight: 500;
   padding: 0.25rem 0;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .nav a:hover,
@@ -83,6 +94,7 @@ body {
   font-weight: 600;
   box-shadow: 0 6px 14px rgba(59, 130, 246, 0.28);
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
 }
 
 .nav-report-btn:hover,
@@ -92,6 +104,14 @@ body {
   border-bottom-color: transparent !important;
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.34);
   transform: translateY(-1px);
+}
+
+.nav-report-short {
+  display: none;
+}
+
+.nav-report-full {
+  display: inline;
 }
 
 .main {
@@ -780,6 +800,54 @@ h2 {
   text-align: right;
 }
 
+@media (max-width: 720px) {
+  .header {
+    height: auto;
+    min-height: 56px;
+    padding: 0.65rem 0.85rem;
+    gap: 0.55rem 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-size: 1.05rem;
+  }
+
+  .nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .nav-links {
+    gap: 0.85rem;
+  }
+
+  .nav a {
+    font-size: 0.875rem;
+  }
+
+  .nav-report-btn {
+    margin-left: auto;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.24);
+  }
+
+  .nav-report-btn:hover,
+  .nav-report-btn.active {
+    transform: none;
+  }
+
+  .nav-report-full {
+    display: none;
+  }
+
+  .nav-report-short {
+    display: inline;
+  }
+}
+
 @media (max-width: 600px) {
   .photo-actions {
     grid-template-columns: 1fr;
@@ -795,6 +863,18 @@ h2 {
 
   .map-container {
     min-height: 350px;
+  }
+
+  .main {
+    padding: 1rem 0.85rem;
+  }
+
+  .sensor-title-row h2 {
+    white-space: normal;
+  }
+
+  .sensor-page-description {
+    font-size: 0.8rem;
   }
 }
 

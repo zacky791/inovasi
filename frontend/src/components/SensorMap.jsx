@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const KL_CENTER = { lat: 3.139003, lng: 101.686855 };
 const DEFAULT_ZOOM = 11;
-const MAX_FIT_ZOOM = 15;
-const FOCUS_ZOOM = 16;
+const FOCUS_ZOOM = 10;
 
 const STATUS_PIN_COLORS = {
   SAFE: '#43a047',
@@ -43,6 +42,18 @@ function hasCoordinates(sensor) {
   return Number.isFinite(lat) && Number.isFinite(lng);
 }
 
+function getLatestDetection(sensors) {
+  if (!sensors.length) return null;
+
+  const holes = sensors.filter((s) => s.status === 'HOLE_DETECTED');
+  const pool = holes.length > 0 ? holes : sensors;
+
+  return pool.reduce((latest, sensor) => {
+    if (!latest) return sensor;
+    return new Date(sensor.created_at) > new Date(latest.created_at) ? sensor : latest;
+  }, null);
+}
+
 function getMarkerIcon(status) {
   if (!window.google?.maps) return undefined;
 
@@ -62,16 +73,6 @@ function getMarkerIcon(status) {
     scaledSize: new window.google.maps.Size(44, 44),
     anchor: new window.google.maps.Point(22, 44),
   };
-}
-
-function fitBoundsZoomedOut(map, bounds, maxZoom = MAX_FIT_ZOOM) {
-  map.fitBounds(bounds, { top: 80, right: 80, bottom: 80, left: 80 });
-
-  window.google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
-    if (map.getZoom() > maxZoom) {
-      map.setZoom(maxZoom);
-    }
-  });
 }
 
 function statusClass(status) {
@@ -112,7 +113,7 @@ function SensorInfoContent({ sensor }) {
 export default function SensorMap({ sensors, selectedDeviceId, onSelectDevice }) {
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef(null);
-  const fittedCountRef = useRef(0);
+  const centeredRef = useRef(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -122,6 +123,19 @@ export default function SensorMap({ sensors, selectedDeviceId, onSelectDevice })
     () => sensors.filter(hasCoordinates),
     [sensors]
   );
+
+  const lastDetection = useMemo(
+    () => getLatestDetection(mappableSensors),
+    [mappableSensors]
+  );
+
+  const initialCenter = useMemo(() => {
+    if (!lastDetection) return KL_CENTER;
+    return {
+      lat: Number(lastDetection.latitude),
+      lng: Number(lastDetection.longitude),
+    };
+  }, [lastDetection]);
 
   const selectedSensor = useMemo(
     () => mappableSensors.find((sensor) => sensor.device_id === selectedDeviceId) || null,
@@ -136,6 +150,7 @@ export default function SensorMap({ sensors, selectedDeviceId, onSelectDevice })
   const onUnmount = useCallback(() => {
     mapRef.current = null;
     setMapReady(false);
+    centeredRef.current = false;
   }, []);
 
   const focusSensor = useCallback((sensor, zoom = FOCUS_ZOOM) => {
@@ -173,21 +188,14 @@ export default function SensorMap({ sensors, selectedDeviceId, onSelectDevice })
     }
   }, [selectedDeviceId, mappableSensors, mapReady, focusSensor]);
 
+  // Center on last detection (prefer HOLE_DETECTED, else newest reading)
   useEffect(() => {
-    if (!mapReady || !mapRef.current || mappableSensors.length === 0) return;
-    if (fittedCountRef.current === mappableSensors.length) return;
+    if (!mapReady || !mapRef.current || !lastDetection) return;
+    if (centeredRef.current) return;
 
-    const bounds = new window.google.maps.LatLngBounds();
-    mappableSensors.forEach((sensor) => {
-      bounds.extend({
-        lat: Number(sensor.latitude),
-        lng: Number(sensor.longitude),
-      });
-    });
-
-    fitBoundsZoomedOut(mapRef.current, bounds);
-    fittedCountRef.current = mappableSensors.length;
-  }, [mappableSensors, mapReady]);
+    focusSensor(lastDetection, FOCUS_ZOOM);
+    centeredRef.current = true;
+  }, [lastDetection, mapReady, focusSensor]);
 
   if (loadError) {
     return (
@@ -225,8 +233,8 @@ export default function SensorMap({ sensors, selectedDeviceId, onSelectDevice })
     <div className="map-wrapper">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={KL_CENTER}
-        zoom={DEFAULT_ZOOM}
+        center={initialCenter}
+        zoom={lastDetection ? FOCUS_ZOOM : DEFAULT_ZOOM}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleMapClick}

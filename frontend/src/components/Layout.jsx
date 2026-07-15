@@ -6,18 +6,27 @@ export default function Layout() {
   return (
     <div className="app">
       <header className="header">
-        <Link to="/" className="logo">
+        <Link to="/dashboard" className="logo">
           Smart City
         </Link>
         <nav className="nav">
-          <Link to="/report" className={location.pathname === '/report' ? 'active' : ''}>
-            Report Issue
-          </Link>
-          <Link to="/dashboard" className={location.pathname === '/dashboard' ? 'active' : ''}>
+          <Link
+            to="/dashboard"
+            className={location.pathname === '/dashboard' ? 'active' : ''}
+          >
             Dashboard
           </Link>
-          <Link to="/sensors" className={location.pathname === '/sensors' ? 'active' : ''}>
-            Sensors
+          <Link
+            to="/reports"
+            className={location.pathname === '/reports' ? 'active' : ''}
+          >
+            Reports
+          </Link>
+          <Link
+            to="/report"
+            className={`nav-report-btn${location.pathname === '/report' ? ' active' : ''}`}
+          >
+            Report Issue
           </Link>
         </nav>
       </header>

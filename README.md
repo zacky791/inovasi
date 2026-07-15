@@ -8,7 +8,7 @@ MVP for reporting damaged public infrastructure via photo upload. AI Vision anal
 React (Vite)  →  REST API  →  Node.js Express
                                     ├── Local uploads/
                                     ├── OpenAI Vision API
-                                    └── MySQL
+                                    └── PostgreSQL
 ```
 
 ## Folder Structure
@@ -59,7 +59,7 @@ Inovasi/
 ## Prerequisites
 
 - Node.js 18+
-- MySQL 8+
+- PostgreSQL 14+
 - OpenAI API key
 - Google Maps JavaScript API key
 
@@ -67,16 +67,21 @@ Inovasi/
 
 ### 1. Database
 
+Create an empty database named `smart_city`, then run the schema:
+
 ```bash
-mysql -u root -p < backend/database/schema.sql
+psql -U postgres -c "CREATE DATABASE smart_city;"
+psql -U postgres -d smart_city -f backend/database/schema.sql
 ```
+
+Or use DBeaver: connect to PostgreSQL → create database `smart_city` → run `backend/database/schema.sql`.
 
 ### 2. Backend
 
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your MySQL credentials and OpenAI API key
+# Edit .env with your PostgreSQL credentials and OpenAI API key
 npm install
 npm start
 ```
@@ -102,11 +107,13 @@ Frontend runs at `http://localhost:5173`
 | Variable | Description |
 |----------|-------------|
 | `PORT` | Server port (default: 3001) |
-| `DB_HOST` | MySQL host |
-| `DB_PORT` | MySQL port |
-| `DB_USER` | MySQL username |
-| `DB_PASSWORD` | MySQL password |
+| `DB_HOST` | PostgreSQL host |
+| `DB_PORT` | PostgreSQL port (default: `5432`) |
+| `DB_USER` | PostgreSQL username |
+| `DB_PASSWORD` | PostgreSQL password |
 | `DB_NAME` | Database name (`smart_city`) |
+| `DB_SSL` | `true` for Render/cloud Postgres |
+| `DATABASE_URL` | Optional full connection string (Render) |
 | `OPENAI_API_KEY` | OpenAI API key for Vision |
 | `UPLOAD_DIR` | Upload folder (default: `uploads`) |
 

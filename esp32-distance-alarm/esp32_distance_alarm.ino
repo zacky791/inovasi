@@ -1,5 +1,7 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <TinyGPSPlus.h>
 
 // ==========================
 // WiFi Configuration
@@ -9,19 +11,26 @@ const char* ssid = "Zack";
 const char* password = "lembuberuk";
 
 // ==========================
-// Backend API
+// Backend API (Render)
 // ==========================
 
-const char* API_URL = "http://172.20.10.12:3001/api/sensor/log";
+const char* API_URL = "https://inovasi-api.onrender.com/api/sensor/log";
 const char* DEVICE_ID = "ESP32_001";
 const float HOLE_THRESHOLD_CM = 20.0;
 
 // ==========================
-// Sensor location (Google Maps)
+// GPS + Fallback location
 // ==========================
 
-const float DEVICE_LAT = 2.981647;
-const float DEVICE_LNG = 101.612425;
+TinyGPSPlus gps;
+HardwareSerial gpsSerial(1); // RX = GPIO34
+
+const float FALLBACK_LAT = 2.981647;
+const float FALLBACK_LNG = 101.612425;
+
+float latitude = FALLBACK_LAT;
+float longitude = FALLBACK_LNG;
+bool gpsHasFix = false;
 
 // ==========================
 // Pin Configuration
@@ -47,6 +56,9 @@ float distance;
 void setup() {
   Serial.begin(115200);
 
+  // GPS UART: RX = GPIO34, TX unused
+  gpsSerial.begin(9600, SERIAL_8N1, 34, -1);
+
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(greenLed, OUTPUT);
@@ -58,16 +70,18 @@ void setup() {
   digitalWrite(buzzer, LOW);
 
   connectWiFi();
+
+  Serial.println("System Started");
+  Serial.println("GPS: go outdoors / open sky for a real fix.");
+  Serial.println("Indoor: will use FALLBACK location until GPS is ready.");
 }
 
 // ==========================
-// Connect WiFi
+// WiFi
 // ==========================
 
 void connectWiFi() {
-  Serial.println();
   Serial.println("Connecting WiFi...");
-
   WiFi.begin(ssid, password);
 
   int attempts = 0;
@@ -77,19 +91,49 @@ void connectWiFi() {
     attempts++;
   }
 
+  Serial.println();
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println();
     Serial.println("WiFi Connected");
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println();
-    Serial.println("WiFi connection failed");
+    Serial.println("ERROR: WiFi connection failed");
   }
 }
 
 // ==========================
-// Read Ultrasonic
+// GPS Reading
+// ==========================
+
+void readGPS() {
+  while (gpsSerial.available() > 0) {
+    gps.encode(gpsSerial.read());
+  }
+
+  if (gps.location.isValid()) {
+    latitude = gps.location.lat();
+    longitude = gps.location.lng();
+    gpsHasFix = true;
+
+    Serial.print("GPS OK | Latitude: ");
+    Serial.print(latitude, 6);
+    Serial.print(" | Longitude: ");
+    Serial.println(longitude, 6);
+  } else {
+    gpsHasFix = false;
+    latitude = FALLBACK_LAT;
+    longitude = FALLBACK_LNG;
+
+    Serial.println("ERROR: Waiting GPS fix — open sky / outdoors needed");
+    Serial.print("Using FALLBACK location: ");
+    Serial.print(FALLBACK_LAT, 6);
+    Serial.print(", ");
+    Serial.println(FALLBACK_LNG, 6);
+  }
+}
+
+// ==========================
+// Ultrasonic
 // ==========================
 
 float readDistance() {
@@ -109,34 +153,47 @@ float readDistance() {
 }
 
 // ==========================
-// Send to Backend API
+// Send Backend
 // ==========================
 
 void sendToBackend(float dist, const char* status, bool buzzerOn) {
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("ERROR: WiFi not connected — skip API send");
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
-  http.begin(API_URL);
+  http.begin(client, API_URL);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(5000);
+  http.setTimeout(15000);
 
   String payload = "{";
   payload += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
   payload += "\"distance\":" + String(dist, 1) + ",";
   payload += "\"status\":\"" + String(status) + "\",";
   payload += "\"buzzer\":" + String(buzzerOn ? "true" : "false") + ",";
-  payload += "\"latitude\":" + String(DEVICE_LAT, 6) + ",";
-  payload += "\"longitude\":" + String(DEVICE_LNG, 6);
+  payload += "\"latitude\":" + String(latitude, 6) + ",";
+  payload += "\"longitude\":" + String(longitude, 6);
   payload += "}";
 
-  int code = http.POST(payload);
-  Serial.print("API response: ");
-  Serial.println(code);
+  if (gpsHasFix) {
+    Serial.println("Sending with LIVE GPS coordinates");
+  } else {
+    Serial.println("Sending with FALLBACK coordinates (GPS not ready)");
+  }
 
-  if (code < 0) {
-    Serial.println(http.errorToString(code));
+  Serial.println(payload);
+
+  int response = http.POST(payload);
+  Serial.print("API Response: ");
+  Serial.println(response);
+
+  if (response < 0) {
+    Serial.print("ERROR: API failed — ");
+    Serial.println(http.errorToString(response));
   }
 
   http.end();
@@ -165,6 +222,8 @@ void alarm() {
 // ==========================
 
 void loop() {
+  readGPS();
+
   distance = readDistance();
 
   if (distance == -1) {
@@ -177,7 +236,7 @@ void loop() {
     Serial.println(" cm");
 
     if (distance > HOLE_THRESHOLD_CM) {
-      Serial.println("!!! HOLE DETECTED !!!");
+      Serial.println("HOLE DETECTED");
       alarm();
       sendToBackend(distance, "HOLE_DETECTED", true);
     } else {
@@ -190,8 +249,9 @@ void loop() {
   }
 
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("ERROR: WiFi lost — reconnecting...");
     connectWiFi();
   }
 
-  delay(500);
+  delay(1000);
 }

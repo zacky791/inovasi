@@ -1,8 +1,7 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import LandingPage from '../pages/LandingPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ReportPage from '../pages/ReportPage';
 import DashboardPage from '../pages/DashboardPage';
-import SensorDashboardPage from '../pages/SensorDashboardPage';
+import ReportsPage from '../pages/ReportsPage';
 import Layout from '../components/Layout';
 
 export default function AppRouter() {
@@ -10,10 +9,11 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/report" element={<ReportPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/sensors" element={<SensorDashboardPage />} />
+          <Route path="/dashboard" element={<ReportsPage />} />
+          <Route path="/reports" element={<DashboardPage />} />
+          <Route path="/sensors" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -59,7 +59,12 @@ export default function ReportPage() {
       const report = await createReport(formData);
       setHighlightReportId(report.id);
 
-      navigate('/reports');
+      navigate('/dashboard', {
+        state: {
+          historySource: 'manual',
+          highlightReportId: report.id,
+        },
+      });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit report. Please try again.');
     } finally {

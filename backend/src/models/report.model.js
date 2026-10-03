@@ -1,14 +1,14 @@
 const pool = require('../config/db');
 
 const ALLOWED_SEVERITIES = ['Low', 'Medium', 'High'];
-const ALLOWED_STATUSES = ['processing', 'pending', 'failed'];
+const ALLOWED_STATUSES = ['processing', 'pending', 'in_progress', 'resolved', 'failed'];
 
-async function create({ imageUrl, latitude, longitude }) {
+async function create({ imageUrl, latitude, longitude, issueType, severity, status, description }) {
   const result = await pool.query(
-    `INSERT INTO reports (image_url, latitude, longitude, status)
-     VALUES ($1, $2, $3, 'processing')
+    `INSERT INTO reports (image_url, latitude, longitude, issue_type, severity, status, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id`,
-    [imageUrl, latitude, longitude]
+    [imageUrl, latitude, longitude, issueType, severity, status, description]
   );
   return findById(result.rows[0].id);
 }

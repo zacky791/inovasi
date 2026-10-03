@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS reports (
   severity VARCHAR(20) DEFAULT NULL CHECK (severity IS NULL OR severity IN ('Low', 'Medium', 'High')),
   description TEXT DEFAULT NULL,
   confidence DECIMAL(5, 2) DEFAULT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'pending', 'failed')),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('processing', 'pending', 'in_progress', 'resolved', 'failed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

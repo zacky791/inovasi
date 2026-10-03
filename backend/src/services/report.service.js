@@ -1,5 +1,4 @@
 const reportModel = require('../models/report.model');
-const aiService = require('./ai.service');
 
 function formatReport(report) {
   if (!report) return null;
@@ -19,30 +18,17 @@ function formatReport(report) {
   };
 }
 
-async function createReport({ imageUrl, latitude, longitude }) {
-  const report = await reportModel.create({ imageUrl, latitude, longitude });
-  processReportWithAi(report.id);
+async function createReport({ imageUrl, latitude, longitude, issueType, severity, status, description }) {
+  const report = await reportModel.create({
+    imageUrl,
+    latitude,
+    longitude,
+    issueType,
+    severity,
+    status,
+    description,
+  });
   return formatReport(report);
-}
-
-async function processReportWithAi(reportId) {
-  try {
-    const report = await reportModel.findById(reportId);
-    if (!report) return;
-
-    const aiResult = await aiService.analyzeImage(report.image_url);
-
-    await reportModel.updateAiResult(reportId, {
-      issueType: aiResult.issueType,
-      severity: aiResult.severity,
-      description: aiResult.description,
-      confidence: aiResult.confidence,
-      status: 'pending',
-    });
-  } catch (error) {
-    console.error(`AI processing failed for report ${reportId}:`, error.message);
-    await reportModel.markFailed(reportId);
-  }
 }
 
 async function getAllReports() {

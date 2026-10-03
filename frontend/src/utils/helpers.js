@@ -22,6 +22,10 @@ export function getStatusLabel(status) {
       return 'Processing';
     case 'pending':
       return 'Pending';
+    case 'in_progress':
+      return 'In Progress';
+    case 'resolved':
+      return 'Resolved';
     case 'failed':
       return 'Failed';
     default:

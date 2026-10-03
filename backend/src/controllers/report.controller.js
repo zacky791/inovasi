@@ -1,5 +1,8 @@
 const reportService = require('../services/report.service');
 const { getRelativeImageUrl } = require('../utils/file.util');
+const { ALLOWED_SEVERITIES } = require('../models/report.model');
+
+const REPORT_FORM_STATUSES = ['pending', 'in_progress', 'resolved'];
 
 async function createReport(req, res, next) {
   try {
@@ -24,11 +27,32 @@ async function createReport(req, res, next) {
       return res.status(400).json({ error: 'Latitude or longitude out of range' });
     }
 
+    const issueType = (req.body.issue_type || '').trim();
+    const severity = req.body.severity;
+    const status = req.body.status || 'pending';
+    const description = (req.body.description || '').trim();
+
+    if (!issueType || issueType.length > 100) {
+      return res.status(400).json({ error: 'Issue type is required (max 100 characters)' });
+    }
+
+    if (!ALLOWED_SEVERITIES.includes(severity)) {
+      return res.status(400).json({ error: `Severity must be one of: ${ALLOWED_SEVERITIES.join(', ')}` });
+    }
+
+    if (!REPORT_FORM_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `Status must be one of: ${REPORT_FORM_STATUSES.join(', ')}` });
+    }
+
     const imageUrl = getRelativeImageUrl(req.file.filename);
     const report = await reportService.createReport({
       imageUrl,
       latitude: lat,
       longitude: lng,
+      issueType,
+      severity,
+      status,
+      description: description || null,
     });
 
     res.status(201).json(report);

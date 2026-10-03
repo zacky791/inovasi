@@ -4,6 +4,27 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { createReport } from '../services/api';
 import { DEMO_LOCATION, setHighlightReportId } from '../services/localReports';
 
+const ISSUE_TYPES = [
+  'Pothole',
+  'Broken Pavement',
+  'Broken Streetlight',
+  'Overflowing Trash Bin',
+  'Blocked Drain',
+  'Graffiti',
+  'Fallen Tree',
+  'Other',
+];
+
+const SEVERITIES = ['Low', 'Medium', 'High'];
+
+const STATUSES = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'resolved', label: 'Resolved' },
+];
+
+const DESCRIPTION_MAX = 500;
+
 export default function ReportPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -13,6 +34,10 @@ export default function ReportPage() {
 
   const [preview, setPreview] = useState(null);
   const [file, setFile] = useState(null);
+  const [issueType, setIssueType] = useState('');
+  const [severity, setSeverity] = useState('');
+  const [status, setStatus] = useState('pending');
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -44,6 +69,16 @@ export default function ReportPage() {
       return;
     }
 
+    if (!issueType) {
+      setError('Please choose an issue type');
+      return;
+    }
+
+    if (!severity) {
+      setError('Please choose a severity');
+      return;
+    }
+
     const usingDemoLocation = latitude === null || longitude === null;
     const lat = usingDemoLocation ? DEMO_LOCATION.latitude : latitude;
     const lng = usingDemoLocation ? DEMO_LOCATION.longitude : longitude;
@@ -52,6 +87,10 @@ export default function ReportPage() {
     formData.append('image', file);
     formData.append('latitude', lat);
     formData.append('longitude', lng);
+    formData.append('issue_type', issueType);
+    formData.append('severity', severity);
+    formData.append('status', status);
+    formData.append('description', description.trim());
 
     try {
       setSubmitting(true);
@@ -166,8 +205,87 @@ export default function ReportPage() {
 
         <section className="report-panel">
           <div className="report-panel-header">
-            <h3>Location</h3>
+            <h3>Details</h3>
             <span className="report-step">Step 2</span>
+          </div>
+
+          <div className="report-fields">
+            <label className="report-field">
+              <span className="report-field-label">Issue type</span>
+              <select
+                className="report-input"
+                value={issueType}
+                onChange={(e) => setIssueType(e.target.value)}
+              >
+                <option value="" disabled>
+                  Choose an issue…
+                </option>
+                {ISSUE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="report-field">
+              <span className="report-field-label">Severity</span>
+              <div className="report-segmented" role="radiogroup" aria-label="Severity">
+                {SEVERITIES.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    role="radio"
+                    aria-checked={severity === level}
+                    className={`report-segment report-segment-${level.toLowerCase()}${
+                      severity === level ? ' report-segment-active' : ''
+                    }`}
+                    onClick={() => setSeverity(level)}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="report-field">
+              <span className="report-field-label">Status</span>
+              <select
+                className="report-input"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                {STATUSES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="report-field">
+              <span className="report-field-label">
+                Description <span className="report-field-optional">(optional)</span>
+              </span>
+              <textarea
+                className="report-input report-textarea"
+                rows={3}
+                maxLength={DESCRIPTION_MAX}
+                placeholder="e.g. Deep pothole near the bus stop, about 30 cm wide"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+              <span className="report-field-hint">
+                {description.length}/{DESCRIPTION_MAX}
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section className="report-panel">
+          <div className="report-panel-header">
+            <h3>Location</h3>
+            <span className="report-step">Step 3</span>
           </div>
 
           <div

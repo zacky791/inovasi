@@ -1,7 +1,6 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <TinyGPSPlus.h>
 
 // ==========================
 // WiFi Configuration
@@ -21,18 +20,11 @@ const char* DEVICE_ID = "ESP32_001";
 const float HOLE_THRESHOLD_CM = 8.0;
 
 // ==========================
-// GPS
+// Fixed location
 // ==========================
 
-TinyGPSPlus gps;
-HardwareSerial gpsSerial(1);
-
-const float FALLBACK_LAT = 2.981647;
-const float FALLBACK_LNG = 101.612425;
-
-float latitude = FALLBACK_LAT;
-float longitude = FALLBACK_LNG;
-bool gpsHasFix = false;
+const double latitude = 3.08351;
+const double longitude = 101.51533;
 
 // ==========================
 // Pin Configuration
@@ -71,9 +63,6 @@ void showHole() {
 void setup() {
 
   Serial.begin(115200);
-
-  // GPS UART: RX = GPIO34, TX unused
-  gpsSerial.begin(9600, SERIAL_8N1, 34, -1);
 
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
@@ -119,30 +108,6 @@ void connectWiFi() {
   } else {
 
     Serial.println("WiFi Failed");
-  }
-}
-
-// ==========================
-// GPS
-// ==========================
-
-void readGPS() {
-
-  while (gpsSerial.available()) {
-    gps.encode(gpsSerial.read());
-  }
-
-  if (gps.location.isValid()) {
-
-    latitude = gps.location.lat();
-    longitude = gps.location.lng();
-    gpsHasFix = true;
-
-  } else {
-
-    latitude = FALLBACK_LAT;
-    longitude = FALLBACK_LNG;
-    gpsHasFix = false;
   }
 }
 
@@ -254,8 +219,6 @@ void alarm() {
 // ==========================
 
 void loop() {
-
-  readGPS();
 
   distance = readDistance();
 

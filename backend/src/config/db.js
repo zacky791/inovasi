@@ -24,4 +24,8 @@ const pool = connectionString
       connectionTimeoutMillis: 15000,
     });
 
+pool.on('error', (err) => {
+  console.error('Idle database connection error:', err.message);
+});
+
 module.exports = pool;
